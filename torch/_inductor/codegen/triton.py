@@ -2624,6 +2624,11 @@ class TritonKernel(SIMDKernel):
                 mutated_args.add(self.args.inplace_buffers[mutation].inner_name)
             if mutation in self.args.output_buffers:
                 mutated_args.add(self.args.output_buffers[mutation])
+
+        for argname, arg in zip(argdefs, signature):
+            if isinstance(arg, WorkspaceArg) and arg.zero_fill:
+                mutated_args.add(argname)
+
         mutated_args = sorted(mutated_args)
 
         triton_meta_signature = signature_to_meta(
