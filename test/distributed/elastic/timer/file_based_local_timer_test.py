@@ -6,11 +6,13 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 import multiprocessing as mp
+import os
 import signal
 import time
 import unittest
 import unittest.mock as mock
 import uuid
+import logging
 
 import torch.distributed.elastic.timer as timer
 from torch.testing._internal.common_utils import (
@@ -20,6 +22,8 @@ from torch.testing._internal.common_utils import (
     TEST_WITH_TSAN,
     TestCase,
 )
+
+logger = logging.getLogger(__name__)
 
 
 # timer is not supported on windows or macos
@@ -37,7 +41,7 @@ if not (IS_WINDOWS or IS_MACOS):
         def setUp(self):
             super().setUp()
             self.max_interval = 0.01
-            self.file_path = "/tmp/test_file_path_" + str(uuid.uuid4())
+            self.file_path = f"/tmp/test_file_path_{os.getpid()}_{uuid.uuid4()}"
             self.server = timer.FileTimerServer(
                 self.file_path, "test", self.max_interval
             )
@@ -204,7 +208,7 @@ if not (IS_WINDOWS or IS_MACOS):
     class FileTimerServerTest(TestCase):
         def setUp(self):
             super().setUp()
-            self.file_path = "/tmp/test_file_path_" + str(uuid.uuid4())
+            self.file_path = f"/tmp/test_file_path_{os.getpid()}_{uuid.uuid4()}"
             self.max_interval = 0.01
             self.server = timer.FileTimerServer(
                 self.file_path, "test", self.max_interval
@@ -292,8 +296,10 @@ if not (IS_WINDOWS or IS_MACOS):
             2. a timer can be vacuously released (e.g. no-op)
             """
             self.server.start()
+            logger.info("server started")
 
             client = timer.FileTimerClient(self.file_path)
+            logger.info("client started")
             test_pid = -3
             client._send_request(self._valid_timer(pid=test_pid, scope="test1"))
             client._send_request(self._release_timer(pid=test_pid, scope="test1"))
